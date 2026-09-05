@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Clock } from './components/Clock/Clock';
 import { Countdown } from './components/Countdown/Countdown';
 import { Stopwatch } from './components/Stopwatch/Stopwatch';
@@ -38,29 +38,31 @@ function App() {
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
-  // AudioContext ref — created lazily on first user interaction
+  // Create AudioContext immediately — it starts suspended, resume on user interaction
   const audioCtxRef = useRef<AudioContext | null>(null);
   const stopAlarmSoundRef = useRef<(() => void) | null>(null);
 
-  const unlockAudio = useCallback(() => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-  }, []);
-
-  // Unlock audio on any user interaction
   useEffect(() => {
-    const handler = () => unlockAudio();
-    window.addEventListener('click', handler, { once: true });
-    window.addEventListener('keydown', handler, { once: true });
+    // Create AudioContext on mount (requires user gesture to resume, but we can create it)
+    try {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    } catch(e) {}
+    
+    // Resume AudioContext on every click/keydown (browsers require this)
+    const handler = () => {
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+    };
+    window.addEventListener('click', handler);
+    window.addEventListener('touchstart', handler);
+    window.addEventListener('keydown', handler);
     return () => {
       window.removeEventListener('click', handler);
+      window.removeEventListener('touchstart', handler);
       window.removeEventListener('keydown', handler);
     };
-  }, [unlockAudio]);
+  }, []);
 
   // Global Fullscreen Hotkey
   useEffect(() => {
@@ -123,16 +125,20 @@ function App() {
           clearSnooze(triggeredAlarm.id);
         }
 
-        // Play alarm sound using Web Audio API
-        if (audioCtxRef.current) {
-          if (audioCtxRef.current.state === 'suspended') {
-            audioCtxRef.current.resume().then(() => {
-              stopAlarmSoundRef.current = createAlarmSound(audioCtxRef.current!);
-            });
-          } else {
-            stopAlarmSoundRef.current = createAlarmSound(audioCtxRef.current);
+        // Play alarm sound — force resume AudioContext first, then play
+        const playAlarm = () => {
+          if (audioCtxRef.current) {
+            const ctx = audioCtxRef.current;
+            if (ctx.state === 'suspended') {
+              ctx.resume().then(() => {
+                stopAlarmSoundRef.current = createAlarmSound(ctx);
+              });
+            } else if (ctx.state === 'running') {
+              stopAlarmSoundRef.current = createAlarmSound(ctx);
+            }
           }
-        }
+        };
+        playAlarm();
 
         // System notification
         if ('Notification' in window && Notification.permission === 'granted') {
