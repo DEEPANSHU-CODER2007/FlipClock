@@ -88,9 +88,9 @@ function App() {
   }, []);
 
   // Global Alarm Logic
-  const { alarms, snoozeAlarm, stopAlarmRing, clearSnooze } = useAlarm();
+  const { alarms, snoozeAlarm, stopAlarmRing, clearSnooze, markTriggered } = useAlarm();
   const [ringingAlarmId, setRingingAlarmId] = useState<string | null>(null);
-  const lastTriggeredRef = useRef<{ [key: string]: number }>({});
+  // No more lastTriggeredRef needed — we use alarm.lastTriggered persisted in localStorage
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -100,27 +100,23 @@ function App() {
       const triggeredAlarm = alarms.find(a => {
         if (!a.isEnabled) return false;
 
+        // Don't re-trigger if already fired within last 90 seconds (survives refresh!)
+        const lastFired = a.lastTriggered || 0;
+        if (nowTime - lastFired < 90000) return false;
+
         if (a.snoozeUntil) {
-          if (nowTime >= a.snoozeUntil) {
-            if (lastTriggeredRef.current[a.id] && nowTime - lastTriggeredRef.current[a.id] < 60000) return false;
-            return true;
-          }
-          return false;
+          return nowTime >= a.snoozeUntil;
         }
 
-        if (now.getHours() === a.hours && now.getMinutes() === a.minutes) {
-          if (lastTriggeredRef.current[a.id] && nowTime - lastTriggeredRef.current[a.id] < 60000) return false;
-          return true;
-        }
-
-        return false;
+        return now.getHours() === a.hours && now.getMinutes() === a.minutes;
       });
 
       if (triggeredAlarm && ringingAlarmId !== triggeredAlarm.id) {
-        lastTriggeredRef.current[triggeredAlarm.id] = nowTime;
+        // Immediately write trigger time to localStorage so refresh won't re-fire
+        markTriggered(triggeredAlarm.id);
         setRingingAlarmId(triggeredAlarm.id);
 
-        // If this was a snoozed alarm firing, clear the snoozeUntil so it doesn't re-fire
+        // If this was a snoozed alarm firing, clear the snoozeUntil
         if (triggeredAlarm.snoozeUntil) {
           clearSnooze(triggeredAlarm.id);
         }

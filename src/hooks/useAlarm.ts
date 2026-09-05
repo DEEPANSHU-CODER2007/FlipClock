@@ -5,20 +5,21 @@ export interface AlarmData {
   hours: number;
   minutes: number;
   isEnabled: boolean;
-  snoozeUntil?: number | null; // Timestamp
+  snoozeUntil?: number | null;
+  lastTriggered?: number | null; // Timestamp - persists across refreshes
 }
 
 export function useAlarm() {
   const [alarms, setAlarms] = useLocalStorage<AlarmData[]>('flipclock-alarms-v2', []);
 
   const addAlarm = (hours: number, minutes: number) => {
-    // Use simple string random for id if uuid is not available
     const newAlarm: AlarmData = {
       id: Math.random().toString(36).substr(2, 9),
       hours,
       minutes,
       isEnabled: true,
       snoozeUntil: null,
+      lastTriggered: null,
     };
     setAlarms(prev => [...prev, newAlarm]);
   };
@@ -41,16 +42,23 @@ export function useAlarm() {
   };
 
   const stopAlarmRing = (id: string) => {
-    // Disable alarm so it doesn't ring again today
+    // Disable alarm and record when it last triggered
     setAlarms(prev => prev.map(a => 
-      a.id === id ? { ...a, isEnabled: false, snoozeUntil: null } : a
+      a.id === id ? { ...a, isEnabled: false, snoozeUntil: null, lastTriggered: Date.now() } : a
     ));
   };
 
   const clearSnooze = (id: string) => {
     // Clear snoozeUntil after snoozed alarm fires, keep alarm enabled for next day
     setAlarms(prev => prev.map(a => 
-      a.id === id ? { ...a, snoozeUntil: null } : a
+      a.id === id ? { ...a, snoozeUntil: null, lastTriggered: Date.now() } : a
+    ));
+  };
+
+  const markTriggered = (id: string) => {
+    // Record trigger time in localStorage so refresh doesn't re-fire
+    setAlarms(prev => prev.map(a =>
+      a.id === id ? { ...a, lastTriggered: Date.now() } : a
     ));
   };
 
@@ -62,5 +70,6 @@ export function useAlarm() {
     snoozeAlarm,
     stopAlarmRing,
     clearSnooze,
+    markTriggered,
   };
 }
