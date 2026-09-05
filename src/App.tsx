@@ -100,10 +100,20 @@ function App() {
       const triggeredAlarm = alarms.find(a => {
         if (!a.isEnabled) return false;
 
-        // SYNCHRONOUS check from localStorage — survives page refresh!
-        const triggeredKey = `alarm-fired-${a.id}`;
-        const lastFiredRaw = localStorage.getItem(triggeredKey);
-        const lastFired = lastFiredRaw ? Number(lastFiredRaw) : 0;
+        // Check if this alarm was explicitly dismissed (survives ANY number of refreshes)
+        const dismissedKey = `alarm-dismissed-${a.id}`;
+        const dismissedAt = Number(localStorage.getItem(dismissedKey) || 0);
+        // If dismissed within same hour+minute window → don't re-trigger
+        if (dismissedAt > 0) {
+          const d = new Date(dismissedAt);
+          if (d.getHours() === a.hours && d.getMinutes() === a.minutes) {
+            return false; // Already dismissed for this alarm time slot
+          }
+        }
+
+        // Also check recent fire time to prevent rapid re-triggers
+        const firedKey = `alarm-fired-${a.id}`;
+        const lastFired = Number(localStorage.getItem(firedKey) || 0);
         if (nowTime - lastFired < 90000) return false;
 
         if (a.snoozeUntil) {
@@ -161,13 +171,21 @@ function App() {
   };
 
   const handleStopAlarm = () => {
-    if (ringingAlarmId) stopAlarmRing(ringingAlarmId);
+    if (ringingAlarmId) {
+      // Write dismissed key SYNCHRONOUSLY so refresh won't re-trigger
+      localStorage.setItem(`alarm-dismissed-${ringingAlarmId}`, String(Date.now()));
+      stopAlarmRing(ringingAlarmId);
+    }
     setRingingAlarmId(null);
     stopSound();
   };
 
   const handleSnooze = () => {
-    if (ringingAlarmId) snoozeAlarm(ringingAlarmId, 5);
+    if (ringingAlarmId) {
+      // Clear dismissed key so snooze can re-fire
+      localStorage.removeItem(`alarm-dismissed-${ringingAlarmId}`);
+      snoozeAlarm(ringingAlarmId, 5);
+    }
     setRingingAlarmId(null);
     stopSound();
   };
