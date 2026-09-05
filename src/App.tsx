@@ -88,7 +88,7 @@ function App() {
   }, []);
 
   // Global Alarm Logic
-  const { alarms, snoozeAlarm, stopAlarmRing, clearSnooze, markTriggered } = useAlarm();
+  const { alarms, snoozeAlarm, stopAlarmRing, clearSnooze } = useAlarm();
   const [ringingAlarmId, setRingingAlarmId] = useState<string | null>(null);
   // No more lastTriggeredRef needed — we use alarm.lastTriggered persisted in localStorage
 
@@ -100,8 +100,10 @@ function App() {
       const triggeredAlarm = alarms.find(a => {
         if (!a.isEnabled) return false;
 
-        // Don't re-trigger if already fired within last 90 seconds (survives refresh!)
-        const lastFired = a.lastTriggered || 0;
+        // SYNCHRONOUS check from localStorage — survives page refresh!
+        const triggeredKey = `alarm-fired-${a.id}`;
+        const lastFiredRaw = localStorage.getItem(triggeredKey);
+        const lastFired = lastFiredRaw ? Number(lastFiredRaw) : 0;
         if (nowTime - lastFired < 90000) return false;
 
         if (a.snoozeUntil) {
@@ -112,8 +114,10 @@ function App() {
       });
 
       if (triggeredAlarm && ringingAlarmId !== triggeredAlarm.id) {
-        // Immediately write trigger time to localStorage so refresh won't re-fire
-        markTriggered(triggeredAlarm.id);
+        // Write to localStorage SYNCHRONOUSLY and IMMEDIATELY before any state update
+        // This guarantees refresh won't re-fire the alarm
+        localStorage.setItem(`alarm-fired-${triggeredAlarm.id}`, String(nowTime));
+        
         setRingingAlarmId(triggeredAlarm.id);
 
         // If this was a snoozed alarm firing, clear the snoozeUntil
