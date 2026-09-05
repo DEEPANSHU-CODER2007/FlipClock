@@ -90,70 +90,59 @@ function App() {
   // Global Alarm Logic
   const { alarms, snoozeAlarm, stopAlarmRing, clearSnooze } = useAlarm();
   const [ringingAlarmId, setRingingAlarmId] = useState<string | null>(null);
-  // No more lastTriggeredRef needed — we use alarm.lastTriggered persisted in localStorage
 
+  // Use refs so the interval always reads fresh data WITHOUT needing to recreate
+  const alarmsRef = useRef(alarms);
+  const ringingAlarmIdRef = useRef(ringingAlarmId);
+
+  useEffect(() => { alarmsRef.current = alarms; }, [alarms]);
+  useEffect(() => { ringingAlarmIdRef.current = ringingAlarmId; }, [ringingAlarmId]);
+
+  // STABLE interval — created ONCE on mount, reads fresh data via refs
+  // This prevents missed alarms when interval gets recreated
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
       const nowTime = now.getTime();
+      const currentAlarms = alarmsRef.current;
+      const currentRingingId = ringingAlarmIdRef.current;
 
-      const triggeredAlarm = alarms.find(a => {
+      const triggeredAlarm = currentAlarms.find(a => {
         if (!a.isEnabled) return false;
 
-        // Check if this alarm was explicitly dismissed (survives ANY number of refreshes)
-        const dismissedKey = `alarm-dismissed-${a.id}`;
-        const dismissedAt = Number(localStorage.getItem(dismissedKey) || 0);
-        // If dismissed within same hour+minute window → don't re-trigger
+        // Check if explicitly dismissed for this alarm slot
+        const dismissedAt = Number(localStorage.getItem(`alarm-dismissed-${a.id}`) || 0);
         if (dismissedAt > 0) {
           const d = new Date(dismissedAt);
-          if (d.getHours() === a.hours && d.getMinutes() === a.minutes) {
-            return false; // Already dismissed for this alarm time slot
-          }
+          if (d.getHours() === a.hours && d.getMinutes() === a.minutes) return false;
         }
 
-        // Also check recent fire time to prevent rapid re-triggers
-        const firedKey = `alarm-fired-${a.id}`;
-        const lastFired = Number(localStorage.getItem(firedKey) || 0);
+        // Prevent rapid re-trigger within 90 seconds
+        const lastFired = Number(localStorage.getItem(`alarm-fired-${a.id}`) || 0);
         if (nowTime - lastFired < 90000) return false;
 
-        if (a.snoozeUntil) {
-          return nowTime >= a.snoozeUntil;
-        }
+        if (a.snoozeUntil) return nowTime >= a.snoozeUntil;
 
         return now.getHours() === a.hours && now.getMinutes() === a.minutes;
       });
 
-      if (triggeredAlarm && ringingAlarmId !== triggeredAlarm.id) {
-        // Write to localStorage SYNCHRONOUSLY and IMMEDIATELY before any state update
-        // This guarantees refresh won't re-fire the alarm
+      if (triggeredAlarm && currentRingingId !== triggeredAlarm.id) {
         localStorage.setItem(`alarm-fired-${triggeredAlarm.id}`, String(nowTime));
-        
         setRingingAlarmId(triggeredAlarm.id);
 
-        // If this was a snoozed alarm firing, clear the snoozeUntil
-        if (triggeredAlarm.snoozeUntil) {
-          clearSnooze(triggeredAlarm.id);
-        }
+        if (triggeredAlarm.snoozeUntil) clearSnooze(triggeredAlarm.id);
 
-        // Play alarm sound — force resume AudioContext first, then play
-        const playAlarm = () => {
-          if (audioCtxRef.current) {
-            const ctx = audioCtxRef.current;
-            if (ctx.state === 'suspended') {
-              ctx.resume().then(() => {
-                stopAlarmSoundRef.current = createAlarmSound(ctx);
-              });
-            } else if (ctx.state === 'running') {
-              stopAlarmSoundRef.current = createAlarmSound(ctx);
-            }
-          }
-        };
-        playAlarm();
+        // Play alarm sound
+        const ctx = audioCtxRef.current;
+        if (ctx) {
+          const play = () => { stopAlarmSoundRef.current = createAlarmSound(ctx); };
+          ctx.state === 'suspended' ? ctx.resume().then(play) : play();
+        }
 
         // System notification
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('⏰ ALARM RINGING!', {
-            body: `It's ${String(triggeredAlarm.hours).padStart(2, '0')}:${String(triggeredAlarm.minutes).padStart(2, '0')}. Time to wake up!`,
+          new Notification('⏰ ALARM!', {
+            body: `It's ${String(triggeredAlarm.hours).padStart(2,'0')}:${String(triggeredAlarm.minutes).padStart(2,'0')} — Time to wake up!`,
             requireInteraction: true
           });
         }
@@ -161,7 +150,7 @@ function App() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [alarms, ringingAlarmId]);
+  }, []); // Empty deps = stable, never recreated
 
   const stopSound = () => {
     if (stopAlarmSoundRef.current) {
