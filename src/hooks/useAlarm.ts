@@ -41,9 +41,16 @@ export function useAlarm() {
   };
 
   const stopAlarmRing = (id: string) => {
-    // Just clears snooze and turns off for now (until tomorrow)
+    // Disable alarm so it doesn't ring again today
     setAlarms(prev => prev.map(a => 
       a.id === id ? { ...a, isEnabled: false, snoozeUntil: null } : a
+    ));
+  };
+
+  const clearSnooze = (id: string) => {
+    // Clear snoozeUntil after snoozed alarm fires, keep alarm enabled for next day
+    setAlarms(prev => prev.map(a => 
+      a.id === id ? { ...a, snoozeUntil: null } : a
     ));
   };
 
@@ -54,5 +61,6 @@ export function useAlarm() {
     deleteAlarm,
     snoozeAlarm,
     stopAlarmRing,
+    clearSnooze,
   };
 }

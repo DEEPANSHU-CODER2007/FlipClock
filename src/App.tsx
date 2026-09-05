@@ -86,7 +86,7 @@ function App() {
   }, []);
 
   // Global Alarm Logic
-  const { alarms, snoozeAlarm, stopAlarmRing } = useAlarm();
+  const { alarms, snoozeAlarm, stopAlarmRing, clearSnooze } = useAlarm();
   const [ringingAlarmId, setRingingAlarmId] = useState<string | null>(null);
   const lastTriggeredRef = useRef<{ [key: string]: number }>({});
 
@@ -117,6 +117,11 @@ function App() {
       if (triggeredAlarm && ringingAlarmId !== triggeredAlarm.id) {
         lastTriggeredRef.current[triggeredAlarm.id] = nowTime;
         setRingingAlarmId(triggeredAlarm.id);
+
+        // If this was a snoozed alarm firing, clear the snoozeUntil so it doesn't re-fire
+        if (triggeredAlarm.snoozeUntil) {
+          clearSnooze(triggeredAlarm.id);
+        }
 
         // Play alarm sound using Web Audio API
         if (audioCtxRef.current) {
