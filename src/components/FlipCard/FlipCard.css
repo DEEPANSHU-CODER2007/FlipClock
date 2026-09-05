@@ -1,0 +1,203 @@
+.flip-card-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flip-card {
+  /* Use CSS variables for flawless mathematical text slicing */
+  --card-height: 240px;
+  
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px; /* Smoother corners for premium look */
+  background-color: #1a1a1a;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  
+  /* Text styling */
+  font-weight: 500; /* 500 is cleaner and more elegant than 700 */
+  color: #e0e0e0; /* Premium bright silver */
+  perspective: 1500px; /* Deeper perspective prevents heavy distortion */
+  
+  width: 280px;
+  height: var(--card-height);
+  font-size: 155px; /* Reduced to leave more empty space on the sides */
+  letter-spacing: -2px;
+}
+
+/* Card Halves */
+.card-top, .card-bottom, .flap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  overflow: hidden;
+  border: 1px solid #111; /* Sharp physical edge */
+}
+
+/* Gradients for physical lighting realism */
+.card-top, .flap-top {
+  top: 0;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  transform-origin: bottom;
+  background: linear-gradient(to bottom, #242424 0%, #1a1a1a 100%);
+  border-bottom: none;
+}
+
+.card-bottom, .flap-bottom {
+  bottom: 0;
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+  transform-origin: top;
+  background: linear-gradient(to bottom, #111111 0%, #0a0a0a 100%);
+  border-top: none;
+}
+
+/* 
+  FLAWLESS TEXT SLICING:
+  Instead of flexbox which causes sub-pixel glitches, we explicitly set the text container 
+  to the exact height of the full card, and offset it by -100% on the bottom half.
+*/
+.flip-card .num {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--card-height);
+  line-height: var(--card-height);
+  text-align: center;
+  color: #e0e0e0;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Depth behind text */
+}
+
+.card-top .num, .flap-top .num {
+  top: 0;
+}
+
+.card-bottom .num, .flap-bottom .num {
+  top: -100%; /* Pulls the text up exactly 50% of the full card (which is 100% of the half-card) */
+}
+
+/* Flap Animations */
+.flap {
+  backface-visibility: hidden;
+  z-index: 5;
+}
+
+.flap-top {
+  animation: flipTop 0.25s cubic-bezier(0.37, 0, 0.63, 1) forwards;
+  z-index: 6; 
+}
+
+.flap-bottom {
+  transform: rotateX(90deg);
+  animation: flipBottom 0.25s cubic-bezier(0.37, 0, 0.63, 1) 0.25s forwards;
+  background: linear-gradient(to bottom, #111111 0%, #0a0a0a 100%);
+}
+
+@keyframes flipTop {
+  0% { transform: rotateX(0deg); }
+  100% { transform: rotateX(-90deg); }
+}
+
+@keyframes flipBottom {
+  0% { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}
+
+/* Dynamic 3D shadows during flip */
+.card-top::after, .card-bottom::after, .flap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0));
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.card-bottom::after {
+  background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.2));
+}
+.flap-top::after {
+  opacity: 1; 
+  animation: shadowTop 0.25s cubic-bezier(0.37, 0, 0.63, 1) forwards;
+}
+.flap-bottom::after {
+  background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.3));
+  animation: shadowBottom 0.25s cubic-bezier(0.37, 0, 0.63, 1) 0.25s forwards;
+}
+
+@keyframes shadowTop {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes shadowBottom {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Center Divider Line */
+.divider {
+  position: absolute;
+  top: calc(50% - 2px);
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #000;
+  z-index: 10;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.08); /* Beveled edge look */
+}
+
+/* AM/PM Label */
+.corner-label {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  font-size: 26px; /* Perfect balance between readability and not overlapping */
+  font-weight: 700;
+  color: #c2c2c2;
+  z-index: 20;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* Bottom Label (HOURS, MINUTES, SECONDS) */
+.bottom-label {
+  margin-top: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #a0a0a0;
+  text-transform: uppercase;
+  letter-spacing: 6px;
+}
+
+/* Responsive Scaling */
+@media (max-width: 1200px) {
+  .flip-card {
+    --card-height: 190px;
+    width: 200px;
+    font-size: 140px;
+  }
+  .corner-label { font-size: 20px; bottom: 16px; left: 16px; }
+}
+
+@media (max-width: 768px) {
+  .flip-card {
+    --card-height: 120px;
+    width: 130px;
+    font-size: 90px;
+    border-radius: 10px;
+  }
+  .corner-label { font-size: 14px; bottom: 10px; left: 12px; }
+}
+
+@media (max-width: 480px) {
+  .flip-card {
+    --card-height: 80px;
+    width: 85px;
+    font-size: 60px;
+    border-radius: 8px;
+  }
+  .corner-label { font-size: 11px; bottom: 6px; left: 8px; }
+}

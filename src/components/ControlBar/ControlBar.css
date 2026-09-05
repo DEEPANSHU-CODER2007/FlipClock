@@ -1,0 +1,55 @@
+.control-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #151515;
+  border-top: 1px solid #222;
+  box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+  z-index: 100;
+}
+
+.control-group {
+  display: flex;
+  gap: 4px; /* Tighter gap like the reference image */
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  color: #f5f5f5; /* Increased contrast to near white */
+  font-size: 14px; /* Slightly larger for accessibility */
+  font-weight: 500;
+  transition: all 0.2s ease;
+  background-color: transparent;
+}
+
+.control-btn:hover {
+  color: #fff;
+  background-color: #3a3a3a; /* Slightly lighter hover */
+}
+
+.control-btn.active {
+  color: #fff;
+  background-color: #333;
+}
+
+.control-btn.icon-only {
+  padding: 8px 12px;
+}
+
+@media (max-width: 480px) {
+  .control-btn span {
+    display: none;
+  }
+  .control-bar {
+    padding: 10px;
+  }
+}

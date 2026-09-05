@@ -1,0 +1,25 @@
+.clock-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.time-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px; /* Tight gap between the big cards */
+}
+
+@media (max-width: 1200px) {
+  .time-row {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .time-row {
+    gap: 8px;
+  }
+}
