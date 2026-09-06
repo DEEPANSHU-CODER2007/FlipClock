@@ -81,7 +81,6 @@ Then open [http://localhost:5173](http://localhost:5173) in your browser.
 ```bash
 npm run build
 ```
-
 ---
 
 ## ⌨️ Keyboard Shortcuts
